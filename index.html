@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHOUT SMASH 2D</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #090b14;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-wrapper {
+      position: relative;
+      width: 960px;
+      max-width: 96vw;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Top Scoreboard & Shout Bar */
+    #hud {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      background: #12172a;
+      border: 2px solid #263159;
+      border-radius: 12px;
+      padding: 10px 18px;
+      gap: 16px;
+    }
+
+    .score-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .score-box.right {
+      justify-content: flex-end;
+    }
+    .label {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+    .score {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .machine-color { color: #ff3b6b; text-shadow: 0 0 12px rgba(255, 59, 107, 0.6); }
+    .player-color { color: #00f0ff; text-shadow: 0 0 12px rgba(0, 240, 255, 0.6); }
+
+    /* Center Decibel / Shout Bar */
+    #meter-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 260px;
+    }
+    #meter-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #a8b5e0;
+    }
+    #meter-bar-bg {
+      position: relative;
+      width: 100%;
+      height: 18px;
+      background: #070912;
+      border: 2px solid #2b3868;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    #meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00f0ff, #ffe600, #ff2a6d);
+      border-radius: 999px;
+      transition: width 0.04s linear;
+    }
+    #threshold-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: #ffffff;
+      box-shadow: 0 0 6px #fff;
+      left: 25%;
+    }
+
+    /* Canvas */
+    #canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid #263159;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65);
+      background: #0b0f1e;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Controls Footer */
+    #controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #12172a;
+      border: 1px solid #263159;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #b8c4ec;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="range"] {
+      accent-color: #00f0ff;
+      cursor: pointer;
+    }
+
+    /* Overlay Screens */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 10, 22, 0.86);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      z-index: 10;
+    }
+    #overlay.hidden { display: none; }
+
+    #overlay h1 {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, #00f0ff, #ffe600, #ff3b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    #overlay p {
+      max-width: 520px;
+      color: #cdd7f7;
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 14px 26px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+    button:active { transform: scale(0.96); }
+    .btn-primary {
+      background: linear-gradient(135deg, #00f0ff, #0088ff);
+      color: #05101f;
+      box-shadow: 0 0 24px rgba(0, 240, 255, 0.45);
+    }
+    .btn-primary:hover { box-shadow: 0 0 34px rgba(0, 240, 255, 0.75); }
+    .btn-secondary {
+      background: #1d2542;
+      color: #dce4ff;
+      border: 1px solid #38477d;
+    }
+    #mic-error {
+      color: #ff6b8b;
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <!-- Top HUD -->
+  <div id="hud">
+    <div class="score-box">
+      <span class="label machine-color">MACHINE</span>
+      <span id="machine-score" class="score machine-color">0</span>
+    </div>
+
+    <div id="meter-container">
+      <div id="meter-label">SHOUT POWER: <span id="shout-val">0</span>%</div>
+      <div id="meter-bar-bg">
+        <div id="meter-fill"></div>
+        <div id="threshold-marker" title="Minimum shout needed to bounce"></div>
+      </div>
+    </div>
+
+    <div class="score-box right">
+      <span id="player-score" class="score player-color">0</span>
+      <span class="label player-color">YOU</span>
+    </div>
+  </div>
+
+  <!-- 2D Arena -->
+  <div id="canvas-wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <div id="overlay">
+      <h1 id="overlay-title">SHOUT SMASH 2D</h1>
+      <p id="overlay-desc">
+        The <b>Machine</b> shoots the ball fast!<br>
+        <b>SHOUT HARD</b> into your mic when the ball arrives to bounce it back!<br>
+        Louder shout = faster smash! First to <b>5 points</b> wins!
+      </p>
+      <div class="btn-row">
+        <button id="btn-mic" class="btn-primary">ENABLE MIC &amp; PLAY</button>
+        <button id="btn-nomic" class="btn-secondary">PLAY WITH SPACEBAR / CLICK</button>
+      </div>
+      <div id="mic-error"></div>
+    </div>
+  </div>
+
+  <!-- Sensitivity & Backup Controls -->
+  <div id="controls">
+    <div class="slider-group">
+      <label for="sens-slider">Mic Sensitivity:</label>
+      <input id="sens-slider" type="range" min="0.5" max="4" step="0.1" value="1.8" />
+    </div>
+    <div class="slider-group">
+      <label for="thresh-slider">Shout Threshold:</label>
+      <input id="thresh-slider" type="range" min="10" max="60" step="1" value="22" />
+    </div>
+    <div>Backup: Hold <b>SPACE</b> or <b>MOUSE</b> to shout</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // UI Elements
+  const machineScoreEl = document.getElementById('machine-score');
+  const playerScoreEl = document.getElementById('player-score');
+  const meterFill = document.getElementById('meter-fill');
+  const shoutValEl = document.getElementById('shout-val');
+  const thresholdMarker = document.getElementById('threshold-marker');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlay-title');
+  const overlayDesc = document.getElementById('overlay-desc');
+  const btnMic = document.getElementById('btn-mic');
+  const btnNoMic = document.getElementById('btn-nomic');
+  const micError = document.getElementById('mic-error');
+  const sensSlider = document.getElementById('sens-slider');
+  const threshSlider = document.getElementById('thresh-slider');
+
+  // Audio / Mic state
+  let audioCtx = null;
+  let analyser = null;
+  let timeData = null;
+  let micEnabled = false;
+  let sensitivity = parseFloat(sensSlider.value);
+  let shoutThreshold = parseInt(threshSlider.value, 10);
+  let manualShout = false;
+  let manualCharge = 0;
+
+  sensSlider.addEventListener('input', () => {
+    sensitivity = parseFloat(sensSlider.value);
+  });
+  threshSlider.addEventListener('input', () => {
+    shoutThreshold = parseInt(threshSlider.value, 10);
+    thresholdMarker.style.left = shoutThreshold + '%';
+  });
+  thresholdMarker.style.left = shoutThreshold + '%';
+
+  // Sound FX synthesizer (safe low volume so it doesn't trigger mic)
+  function playTone(freq, duration, type = 'sawtooth', vol = 0.08) {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.4), audioCtx.currentTime + duration);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  // Game Constants & State
+  const WIN_SCORE = 5;
+  let gameState = 'menu'; // 'menu', 'charging', 'playing', 'roundEnd', 'matchOver'
+  let roundTimer = 0;
+  let shake = 0;
+  let hitStop = 0;
+  let bannerText = '';
+  let bannerColor = '#fff';
+  let bannerAlpha = 0;
+
+  let playerScore = 0;
+  let machineScore = 0;
+  let currentShout = 0;
+  let peakShout = 0;
+
+  const machine = {
+    x: 75,
+    y: H / 2,
+    vy: 0,
+    paddleH: 110,
+    speed: 360,
+    recoil: 0,
+    gearAngle: 0
+  };
+
+  const player = {
+    x: W - 75,
+    y: H / 2,
+    shieldX: W - 125,
+    mouthOpen: 0,
+    waveTimer: 0
+  };
+
+  const ball = {
+    x: machine.x + 40,
+    y: H / 2,
+    vx: 0,
+    vy: 0,
+    r: 15,
+    power: 0, // 0 = normal, 1 = hard, 2 = ultra
+    trail: []
+  };
+
+  let particles = [];
+  let shockwaves = [];
+
+  function spawnParticles(x, y, color, count = 18, speed = 320) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = (0.3 + Math.random() * 0.9) * speed;
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        life: 0.35 + Math.random() * 0.35,
+        maxLife: 0.7,
+        size: 3 + Math.random() * 5,
+        color
+      });
+    }
+  }
+
+  function spawnShockwave(x, y, color, maxR = 180) {
+    shockwaves.push({ x, y, r: 20, maxR, color, alpha: 1 });
+  }
+
+  function showBanner(text, color) {
+    bannerText = text;
+    bannerColor = color;
+    bannerAlpha = 1;
+  }
+
+  // Mic Setup
+  async function initMic() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false }
+      });
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.2;
+      source.connect(analyser);
+      timeData = new Uint8Array(analyser.fftSize);
+      micEnabled = true;
+      startMatch();
+    } catch (err) {
+      micError.style.display = 'block';
+      micError.textContent = 'Mic blocked or unavailable. You can still play with SPACEBAR / CLICK!';
+    }
+  }
+
+  function getMicLevel() {
+    let micLvl = 0;
+    if (micEnabled && analyser && timeData) {
+      analyser.getByteTimeDomainData(timeData);
+      let sum = 0;
+      for (let i = 0; i < timeData.length; i++) {
+        const v = (timeData[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / timeData.length);
+      micLvl = Math.min(100, rms * 260 * sensitivity);
+    }
+    if (manualShout) {
+      manualCharge = Math.min(100, manualCharge + 8);
+    } else {
+      manualCharge = Math.max(0, manualCharge - 10);
+    }
+    return Math.round(Math.max(micLvl, manualCharge));
+  }
+
+  // Match & Round Flow
+  function startMatch() {
+    overlay.classList.add('hidden');
+    playerScore = 0;
+    machineScore = 0;
+    updateScoreUI();
+    startRound();
+  }
+
+  function startRound() {
+    gameState = 'charging';
+    roundTimer = 0.65;
+    machine.y = H / 2;
+    ball.x = machine.x + 42;
+    ball.y = machine.y;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.power = 0;
+    ball.trail = [];
+    peakShout = 0;
+  }
+
+  function launchFromMachine() {
+    gameState = 'playing';
+    machine.recoil = 18;
+    const speed = 520 + (playerScore + machineScore) * 28;
+    const angle = (Math.random() - 0.5) * 0.75; // random vertical angle
+    ball.vx = Math.cos(angle) * speed;
+    ball.vy = Math.sin(angle) * speed;
+    spawnParticles(ball.x, ball.y, '#ff3b6b', 16, 260);
+    playTone(220, 0.14, 'square', 0.07);
+  }
+
+  function updateScoreUI() {
+    machineScoreEl.textContent = machineScore;
+    playerScoreEl.textContent = playerScore;
+  }
+
+  function scorePoint(winner) {
+    gameState = 'roundEnd';
+    roundTimer = 1.15;
+
+    if (winner === 'player') {
+      playerScore++;
+      showBanner('YOU WON +1 POINT!', '#00f0ff');
+      spawnParticles(ball.x, ball.y, '#00f0ff', 40, 450);
+      spawnShockwave(ball.x, ball.y, '#00f0ff', 260);
+      playTone(660, 0.25, 'triangle', 0.1);
+      shake = 14;
+    } else {
+      machineScore++;
+      showBanner('MACHINE WON! YOU LOST!', '#ff3b6b');
+      spawnParticles(ball.x, ball.y, '#ff3b6b', 35, 380);
+      spawnShockwave(ball.x, ball.y, '#ff3b6b', 220);
+      playTone(130, 0.35, 'sawtooth', 0.09);
+      shake = 12;
+    }
+
+    updateScoreUI();
+
+    if (playerScore >= WIN_SCORE || machineScore >= WIN_SCORE) {
+      setTimeout(() => {
+        gameState = 'matchOver';
+        const won = playerScore >= WIN_SCORE;
+        overlayTitle.textContent = won ? 'YOU WON THE MATCH!' : 'MACHINE WON! YOU LOST!';
+        overlayDesc.innerHTML = won
+          ? `Your voice crushed the machine <b>${playerScore} - ${machineScore}</b>! Want another fast match?`
+          : `The machine beat you <b>${machineScore} - ${playerScore}</b>. Shout louder next time!`;
+        btnMic.textContent = micEnabled ? 'PLAY AGAIN' : 'ENABLE MIC & PLAY';
+        btnNoMic.textContent = 'PLAY AGAIN (NO MIC)';
+        overlay.classList.remove('hidden');
+      }, 1050);
+    }
+  }
+
+  // Input listeners for backup Space / Click
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      manualShout = true;
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') manualShout = false;
+  });
+  canvas.addEventListener('mousedown', () => { manualShout = true; });
+  window.addEventListener('mouseup', () => { manualShout = false; });
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); manualShout = true; });
+  window.addEventListener('touchend', () => { manualShout = false; });
+
+  btnMic.addEventListener('click', () => {
+    if (micEnabled) startMatch();
+    else initMic();
+  });
+  btnNoMic.addEventListener('click', startMatch);
+
+  // Main Update Loop
+  let lastTime = performance.now();
+  function update(dt) {
+    currentShout = getMicLevel();
+    meterFill.style.width = currentShout + '%';
+    shoutValEl.textContent = currentShout;
+
+    // Smooth visual mouth & gears
+    player.mouthOpen += ((currentShout / 100) - player.mouthOpen) * 0.35;
+    machine.gearAngle += dt * (gameState === 'charging' ? 10 : 2.5);
+    machine.recoil = Math.max(0, machine.recoil - dt * 60);
+    shake = Math.max(0, shake - dt * 36);
+    bannerAlpha = Math.max(0, bannerAlpha - dt * 0.9);
+
+    if (hitStop > 0) {
+      hitStop -= dt;
+      return;
+    }
+
+    // Update particles & shockwaves
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+      const s = shockwaves[i];
+      s.r += (s.maxR - s.r) * 11 * dt;
+      s.alpha -= dt * 2.5;
+      if (s.alpha <= 0) shockwaves.splice(i, 1);
+    }
+
+    if (gameState === 'charging') {
+      roundTimer -= dt;
+      // Machine moves up/down slightly before firing
+      machine.y = H / 2 + Math.sin(performance.now() * 0.008) * 90;
+      ball.x = machine.x + 42;
+      ball.y = machine.y;
+      if (roundTimer <= 0) launchFromMachine();
+      return;
+    }
+
+    if (gameState === 'roundEnd') {
+      roundTimer -= dt;
+      if (roundTimer <= 0 && playerScore < WIN_SCORE && machineScore < WIN_SCORE) {
+        startRound();
+      }
+      return;
+    }
+
+    if (gameState !== 'playing') return;
+
+    // Track peak shout while ball is approaching player
+    if (ball.vx > 0 && ball.x > W * 0.45) {
+      peakShout = Math.max(peakShout, currentShout);
+    } else if (ball.vx < 0) {
+      peakShout = 0;
+    }
+
+    // Move Ball
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    ball.trail.push({ x: ball.x, y: ball.y, power: ball.power });
+    if (ball.trail.length > 16) ball.trail.shift();
+
+    // Top & Bottom Wall Bounce
+    if (ball.y - ball.r < 12) {
+      ball.y = 12 + ball.r;
+      ball.vy = Math.abs(ball.vy);
+      spawnParticles(ball.x, ball.y, '#7b8cff', 8, 160);
+    } else if (ball.y + ball.r > H - 12) {
+      ball.y = H - 12 - ball.r;
+      ball.vy = -Math.abs(ball.vy);
+      spawnParticles(ball.x, ball.y, '#7b8cff', 8, 160);
+    }
+
+    // Machine AI Defense (chases ball when ball comes left)
+    const targetY = ball.vx < 0 ? ball.y : H / 2;
+    const diff = targetY - machine.y;
+    const aiStep = machine.speed * dt;
+    if (Math.abs(diff) > aiStep) {
+      machine.y += Math.sign(diff) * aiStep;
+    } else {
+      machine.y = targetY;
+    }
+    machine.y = Math.max(70, Math.min(H - 70, machine.y));
+
+    // Player Sonic Shield Check (Right Side)
+    // Shield extends further forward if you shout louder!
+    const activeShout = Math.max(currentShout, peakShout * 0.9);
+    const isShouting = activeShout >= shoutThreshold;
+    const shieldReach = isShouting ? 95 + (activeShout / 100) * 90 : 0;
+    const shieldFrontX = W - 65 - shieldReach;
+
+    if (ball.vx > 0 && isShouting && ball.x + ball.r >= shieldFrontX && ball.x < W - 40) {
+      // BOUNCE BACK HARD!
+      const shoutNorm = Math.min(1, (activeShout - shoutThreshold) / (100 - shoutThreshold));
+      const bounceSpeed = 540 + shoutNorm * 780; // Up to 1320 px/s!
+
+      // Aim away from machine if shouting hard!
+      const aimAwayY = machine.y < H / 2 ? H * 0.8 : H * 0.2;
+      const aimY = ball.y * (1 - shoutNorm * 0.65) + aimAwayY * (shoutNorm * 0.65);
+      let angle = Math.atan2(aimY - ball.y, (machine.x + 25) - ball.x);
+      // Add slight speed variation & keep angle reasonable
+      ball.vx = -Math.abs(Math.cos(angle) * bounceSpeed);
+      ball.vy = Math.sin(angle) * bounceSpeed + (Math.random() - 0.5) * 180;
+
+      if (activeShout >= 75) {
+        ball.power = 2; // ULTRA SMASH
+        shake = 18;
+        hitStop = 0.035;
+        showBanner('ULTRA SCREAM SMASH!!', '#ffe600');
+        spawnShockwave(ball.x, ball.y, '#ffe600', 240);
+        spawnParticles(ball.x, ball.y, '#ffe600', 32, 420);
+        playTone(540, 0.16, 'sawtooth', 0.09);
+      } else if (activeShout >= 45) {
+        ball.power = 1; // HARD BOUNCE
+        shake = 9;
+        showBanner('HARD BOUNCE!', '#00f0ff');
+        spawnShockwave(ball.x, ball.y, '#00f0ff', 160);
+        spawnParticles(ball.x, ball.y, '#00f0ff', 20, 300);
+        playTone(400, 0.12, 'triangle', 0.08);
+      } else {
+        ball.power = 0; // NORMAL BOUNCE
+        shake = 4;
+        spawnShockwave(ball.x, ball.y, '#7be8ff', 100);
+        spawnParticles(ball.x, ball.y, '#7be8ff', 12, 200);
+        playTone(300, 0.1, 'sine', 0.07);
+      }
+
+      ball.x = shieldFrontX - ball.r - 2;
+      peakShout = 0;
+    }
+
+    // Machine Paddle Collision (Left Side)
+    if (
+      ball.vx < 0 &&
+      ball.x - ball.r <= machine.x + 30 &&
+      ball.x + ball.r >= machine.x - 10 &&
+      Math.abs(ball.y - machine.y) <= machine.paddleH / 2 + ball.r
+    ) {
+      // Machine blocks and sends back!
+      ball.x = machine.x + 30 + ball.r;
+      const offset = (ball.y - machine.y) / (machine.paddleH / 2);
+      const speed = Math.min(920, Math.hypot(ball.vx, ball.vy) * 0.92 + 60);
+      const angle = offset * 0.7;
+      ball.vx = Math.cos(angle) * speed;
+      ball.vy = Math.sin(angle) * speed;
+      ball.power = 0;
+      machine.recoil = 14;
+      shake = 6;
+      spawnParticles(ball.x, ball.y, '#ff3b6b', 16, 260);
+      playTone(200, 0.12, 'square', 0.07);
+    }
+
+    // Scoring Conditions
+    if (ball.x - ball.r < 10) {
+      scorePoint('player');
+    } else if (ball.x + ball.r > W - 10) {
+      scorePoint('machine');
+    }
+  }
+
+  // Draw Loop
+  function draw() {
+    ctx.save();
+
+    if (shake > 0) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
+
+    // Background Grid
+    ctx.fillStyle = '#090d1c';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(42, 58, 110, 0.28)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 48) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 48) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Center Line
+    ctx.setLineDash([12, 12]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 16);
+    ctx.lineTo(W / 2, H - 16);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Top & Bottom Neon Borders
+    ctx.fillStyle = '#243266';
+    ctx.fillRect(0, 0, W, 10);
+    ctx.fillRect(0, H - 10, W, 10);
+
+    // Goal Zone Lines
+    ctx.fillStyle = 'rgba(255, 59, 107, 0.18)';
+    ctx.fillRect(0, 10, 26, H - 20);
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+    ctx.fillRect(W - 26, 10, 26, H - 20);
+
+    // Shockwaves
+    for (const s of shockwaves) {
+      ctx.strokeStyle = s.color;
+      ctx.globalAlpha = Math.max(0, s.alpha);
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Draw Player Sonic Shield Wall (when shouting!)
+    const isShouting = currentShout >= shoutThreshold;
+    if (isShouting) {
+      const reach = 95 + (currentShout / 100) * 90;
+      const sx = W - 65 - reach;
+      const glowColor = currentShout >= 75 ? '#ffe600' : '#00f0ff';
+
+      // Sonic Energy Arc
+      const grad = ctx.createLinearGradient(sx, 0, W - 40, 0);
+      grad.addColorStop(0, glowColor);
+      grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.globalAlpha = 0.25 + (currentShout / 100) * 0.35;
+      ctx.fillRect(sx, 14, reach, H - 28);
+      ctx.globalAlpha = 1;
+
+      // Front Sonic Wave Line
+      ctx.strokeStyle = glowColor;
+      ctx.lineWidth = 4 + (currentShout / 100) * 6;
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      for (let y = 16; y <= H - 16; y += 20) {
+        const wave = Math.sin(y * 0.06 + performance.now() * 0.025) * (6 + currentShout * 0.12);
+        if (y === 16) ctx.moveTo(sx + wave, y);
+        else ctx.lineTo(sx + wave, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      // Idle Shield Zone Indicator
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.22)';
+      ctx.setLineDash([6, 8]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(W - 155, 20);
+      ctx.lineTo(W - 155, H - 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Draw Machine (Left)
+    ctx.save();
+    ctx.translate(machine.x - machine.recoil, machine.y);
+
+    // Machine Shield Paddle
+    ctx.fillStyle = '#ff3b6b';
+    ctx.shadowColor = '#ff3b6b';
+    ctx.shadowBlur = 16;
+    ctx.fillRect(16, -machine.paddleH / 2, 14, machine.paddleH);
+    ctx.shadowBlur = 0;
+
+    // Machine Body & Gear
+    ctx.fillStyle = '#251428';
+    ctx.strokeStyle = '#ff3b6b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-36, -38, 56, 76, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    // Spinning Gear
+    ctx.save();
+    ctx.translate(-10, 0);
+    ctx.rotate(machine.gearAngle);
+    ctx.strokeStyle = '#ff7b9c';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14);
+      ctx.lineTo(Math.cos(a) * 20, Math.sin(a) * 20);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Charge Glow
+    if (gameState === 'charging') {
+      ctx.fillStyle = '#ff3b6b';
+      ctx.globalAlpha = 0.5 + Math.sin(performance.now() * 0.03) * 0.4;
+      ctx.beginPath();
+      ctx.arc(40, 0, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // Draw Player Megaphone Character (Right)
+    ctx.save();
+    ctx.translate(player.x, H / 2);
+    const mouthSpread = 14 + player.mouthOpen * 45;
+    ctx.fillStyle = '#0e283b';
+    ctx.strokeStyle = currentShout >= 75 ? '#ffe600' : '#00f0ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(28, -22);
+    ctx.lineTo(-24, -mouthSpread);
+    ctx.lineTo(-24, mouthSpread);
+    ctx.lineTo(28, 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Sound Rings out of megaphone when shouting
+    if (isShouting) {
+      ctx.strokeStyle = currentShout >= 75 ? '#ffe600' : '#00f0ff';
+      ctx.lineWidth = 3;
+      for (let i = 1; i <= 3; i++) {
+        ctx.globalAlpha = 0.8 - i * 0.2;
+        ctx.beginPath();
+        ctx.arc(-28, 0, 14 + i * 16 + (currentShout * 0.2), Math.PI * 0.72, Math.PI * 1.28);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // Draw Ball Trail
+    for (let i = 0; i < ball.trail.length; i++) {
+      const t = ball.trail[i];
+      const frac = (i + 1) / ball.trail.length;
+      ctx.globalAlpha = frac * 0.55;
+      ctx.fillStyle = t.power === 2 ? '#ffe600' : t.power === 1 ? '#00f0ff' : '#ffffff';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, ball.r * frac, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Draw Ball
+    const ballColor = ball.power === 2 ? '#ffe600' : ball.power === 1 ? '#00f0ff' : '#ffffff';
+    ctx.fillStyle = ballColor;
+    ctx.shadowColor = ballColor;
+    ctx.shadowBlur = ball.power > 0 ? 25 : 14;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Particles
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Action Banner Text
+    if (bannerAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = bannerAlpha;
+      ctx.font = '900 38px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = bannerColor;
+      ctx.shadowColor = bannerColor;
+      ctx.shadowBlur = 18;
+      ctx.fillText(bannerText, W / 2, 95);
+      ctx.restore();
+    }
+
+    // Hint text during play
+    if (gameState === 'playing' && ball.vx > 0 && ball.x > W * 0.5) {
+      ctx.font = '800 22px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0, 240, 255, 0.85)';
+      ctx.fillText('SHOUT NOW!!', W - 210, H - 35);
+    }
+
+    ctx.restore();
+  }
+
+  function loop(now) {
+    const dt = Math.min(0.035, (now - lastTime) / 1000);
+    lastTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
